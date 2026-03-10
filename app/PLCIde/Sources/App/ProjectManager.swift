@@ -13,8 +13,8 @@ enum SidebarSelection: Hashable {
 
 /// Manages the current project state. Bridges between Swift UI and the Rust core engine.
 ///
-/// Phase 1: loads .plcproj JSON files into Swift model types.
-/// Phase 3+: calls plc_core/plc_parser via UniFFI for import/export.
+/// Native format: .aip (Allen-Bradley IDE Project)
+/// Import/Export: .L5K (ASCII) and .L5X (XML) for Studio 5000 interop.
 class ProjectManager: ObservableObject {
     @Published var project: PlcProject?
     @Published var hasProject: Bool = false
@@ -30,6 +30,11 @@ class ProjectManager: ObservableObject {
     // Validation
     @Published var validationIssues: [ValidationIssue] = []
     @Published var outputMessages: [String] = []
+
+    // Import state
+    @Published var showImportPreview: Bool = false
+    @Published var importPreview: ImportPreview?
+    @Published var pendingImportContent: String?
 
     // MARK: - Computed
 
@@ -51,7 +56,10 @@ class ProjectManager: ObservableObject {
 
     func openProject() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.init(filenameExtension: "plcproj")!]
+        panel.allowedContentTypes = [
+            .init(filenameExtension: "aip")!,
+            .init(filenameExtension: "plcproj")!,
+        ]
         panel.canChooseDirectories = false
         panel.begin { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
@@ -67,8 +75,8 @@ class ProjectManager: ObservableObject {
             url = existing
         } else {
             let panel = NSSavePanel()
-            panel.allowedContentTypes = [.init(filenameExtension: "plcproj")!]
-            panel.nameFieldStringValue = "\(project.name).plcproj"
+            panel.allowedContentTypes = [.init(filenameExtension: "aip")!]
+            panel.nameFieldStringValue = "\(project.name).aip"
             guard panel.runModal() == .OK, let saveURL = panel.url else { return }
             url = saveURL
         }
@@ -87,30 +95,111 @@ class ProjectManager: ObservableObject {
         }
     }
 
+    // MARK: - L5K/L5X Import
+
     func importL5K() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.init(filenameExtension: "L5K")!]
+        panel.canChooseDirectories = false
+        panel.message = "Select an L5K file exported from Studio 5000"
         panel.begin { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
-            self?.outputMessages.append("[Import] L5K import planned for Phase 3: \(url.lastPathComponent)")
+            self?.outputMessages.append("[Import] L5K full-file parsing coming soon. Use L5X for now: \(url.lastPathComponent)")
         }
     }
 
     func importL5X() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.init(filenameExtension: "L5X")!]
+        panel.canChooseDirectories = false
+        panel.message = "Select an L5X file exported from Studio 5000"
         panel.begin { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
-            self?.outputMessages.append("[Import] L5X import planned for Phase 3: \(url.lastPathComponent)")
+            self?.performL5XImport(from: url)
         }
     }
 
+    private func performL5XImport(from url: URL) {
+        do {
+            let content = try String(contentsOf: url, encoding: .utf8)
+
+            // Generate preview
+            let preview = L5XImporter.preview(content)
+            importPreview = preview
+            pendingImportContent = content
+
+            if let preview = preview {
+                // Show preview sheet
+                showImportPreview = true
+                outputMessages.append("[Import] Preview: \(preview.controllerName) — \(preview.programNames.count) programs, \(preview.rungCount) rungs, \(preview.tagCount) tags")
+            } else {
+                // Direct import if preview fails
+                confirmImport()
+            }
+        } catch {
+            outputMessages.append("[Error] Failed to read L5X file: \(error.localizedDescription)")
+        }
+    }
+
+    func confirmImport() {
+        guard let content = pendingImportContent else { return }
+
+        if let proj = L5XImporter.parse(content) {
+            loadProjectData(proj)
+            isDirty = true
+            let summary = proj.summary
+            outputMessages.append("[Import] L5X imported: \(summary.name) — \(summary.rungCount) rungs, \(summary.tagCount) tags")
+        } else {
+            outputMessages.append("[Import] Failed to parse L5X file")
+        }
+
+        showImportPreview = false
+        pendingImportContent = nil
+        importPreview = nil
+    }
+
+    func cancelImport() {
+        showImportPreview = false
+        pendingImportContent = nil
+        importPreview = nil
+    }
+
+    // MARK: - L5K/L5X Export
+
     func exportL5K() {
-        outputMessages.append("[Export] L5K export planned for Phase 3")
+        guard let project = project else { return }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "L5K")!]
+        panel.nameFieldStringValue = "\(project.name).L5K"
+        panel.message = "Export project as L5K (ASCII) for Studio 5000"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        let l5k = L5KExporter.export(project)
+        do {
+            try l5k.write(to: url, atomically: true, encoding: .utf8)
+            outputMessages.append("[Export] L5K exported: \(url.lastPathComponent)")
+        } catch {
+            outputMessages.append("[Error] Failed to write L5K: \(error.localizedDescription)")
+        }
     }
 
     func exportL5X() {
-        outputMessages.append("[Export] L5X export planned for Phase 3")
+        guard let project = project else { return }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "L5X")!]
+        panel.nameFieldStringValue = "\(project.name).L5X"
+        panel.message = "Export project as L5X (XML) for Studio 5000"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        let l5x = L5XExporter.export(project)
+        do {
+            try l5x.write(to: url, atomically: true, encoding: .utf8)
+            outputMessages.append("[Export] L5X exported: \(url.lastPathComponent)")
+        } catch {
+            outputMessages.append("[Error] Failed to write L5X: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Navigation

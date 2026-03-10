@@ -19,10 +19,16 @@ struct MainWindow: View {
     @State private var selectedRungIndex: Int? = nil
 
     var body: some View {
-        if projectManager.hasProject {
-            projectView
-        } else {
-            welcomeView
+        Group {
+            if projectManager.hasProject {
+                projectView
+            } else {
+                welcomeView
+            }
+        }
+        .sheet(isPresented: $projectManager.showImportPreview) {
+            ImportPreviewSheet()
+                .environmentObject(projectManager)
         }
     }
 
@@ -49,10 +55,23 @@ struct MainWindow: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
 
-                Button("Open Project...") {
+                Button("Open Project (.aip)") {
                     projectManager.openProject()
                 }
                 .controlSize(.large)
+
+                Divider()
+                    .frame(width: 200)
+
+                Button("Import L5X...") {
+                    projectManager.importL5X()
+                }
+                .controlSize(.regular)
+
+                Button("Import L5K...") {
+                    projectManager.importL5K()
+                }
+                .controlSize(.regular)
             }
             .padding(.top, 8)
         }
@@ -153,8 +172,7 @@ struct MainWindow: View {
         }
     }
 
-    /// The main ladder view — uses Core Graphics canvas for graphical rendering,
-    /// with a text-based fallback toggle
+    /// The main ladder view — uses Core Graphics canvas for graphical rendering
     private var ladderView: some View {
         VStack(spacing: 0) {
             // Header bar
@@ -207,6 +225,16 @@ struct MainWindow: View {
                 }
                 .frame(maxWidth: 400)
 
+                if project.importedFrom != nil {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.down.doc")
+                            .foregroundColor(.blue)
+                        Text("Imported from Studio 5000")
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
                 Text("Select a routine in the sidebar to view its ladder logic.")
                     .font(.callout)
                     .foregroundColor(.secondary)
@@ -214,6 +242,14 @@ struct MainWindow: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .controlBackgroundColor))
+    }
+
+    private var project: PlcProject {
+        projectManager.project ?? PlcProject(
+            formatVersion: 1, id: "", name: "", description: "",
+            controller: Controller(name: "", family: .compactLogix, catalogNumber: "", firmwareVersion: "", description: ""),
+            tasks: [], tagDatabase: TagDatabase(tags: []), importedFrom: nil
+        )
     }
 
     private func overviewRow(_ label: String, _ value: String) -> some View {

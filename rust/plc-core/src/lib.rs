@@ -4,6 +4,7 @@
 //! Exposes types to Swift via UniFFI.
 
 pub mod ast;
+pub mod export;
 pub mod project;
 pub mod simulator;
 pub mod tags;

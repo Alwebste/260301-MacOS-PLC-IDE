@@ -13,6 +13,7 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
 uniffi = { workspace = true }
+quick-xml = { version = "0.37", features = ["serialize"] }
 
 [build-dependencies]
 uniffi = { workspace = true, features = ["build"] }

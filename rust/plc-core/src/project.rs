@@ -1,4 +1,4 @@
-//! Project model — the top-level container for an entire PLC project (.plcproj).
+//! Project model — the top-level container for an entire PLC project (.aip).
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -6,10 +6,10 @@ use uuid::Uuid;
 use crate::ast::{Controller, ControllerFamily, Task};
 use crate::tags::TagDatabase;
 
-/// File format version for .plcproj files.
+/// File format version for .aip files.
 const PROJECT_FORMAT_VERSION: u32 = 1;
 
-/// A complete PLC project — serialized to disk as .plcproj (JSON).
+/// A complete PLC project — serialized to disk as .aip (JSON).
 #[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
 pub struct PlcProject {
     /// Format version (for migration support)
@@ -45,12 +45,12 @@ impl PlcProject {
         }
     }
 
-    /// Serialize to JSON string (for saving to .plcproj file).
+    /// Serialize to JSON string (for saving to .aip file).
     pub fn to_json(&self) -> Result<String, String> {
         serde_json::to_string_pretty(self).map_err(|e| e.to_string())
     }
 
-    /// Deserialize from JSON string (for loading from .plcproj file).
+    /// Deserialize from JSON string (for loading from .aip file).
     pub fn from_json(json: &str) -> Result<Self, String> {
         serde_json::from_str(json).map_err(|e| e.to_string())
     }
@@ -207,17 +207,19 @@ fn format_element(element: &crate::ast::RungElement) -> String {
     }
 }
 
-fn format_instruction_type(it: &crate::ast::InstructionType) -> &'static str {
+/// Convert an InstructionType to its L5K mnemonic string.
+/// Unknown instructions preserve their original mnemonic for round-trip fidelity.
+pub(crate) fn format_instruction_type(it: &crate::ast::InstructionType) -> String {
     use crate::ast::InstructionType::*;
     match it {
-        Xic => "XIC", Xio => "XIO", Ote => "OTE", Otl => "OTL", Otu => "OTU", Ons => "ONS",
-        Ton => "TON", Tof => "TOF", Rto => "RTO",
-        Ctu => "CTU", Ctd => "CTD", Res => "RES",
-        Equ => "EQU", Neq => "NEQ", Les => "LES", Leq => "LEQ", Grt => "GRT", Geq => "GEQ",
-        Add => "ADD", Sub => "SUB", Mul => "MUL", Div => "DIV", Mod => "MOD", Neg => "NEG",
-        Mov => "MOV", Cop => "COP",
-        Jmp => "JMP", Lbl => "LBL", Jsr => "JSR", Ret => "RET", Sbr => "SBR",
-        Unknown { .. } => "???",
+        Xic => "XIC".into(), Xio => "XIO".into(), Ote => "OTE".into(), Otl => "OTL".into(), Otu => "OTU".into(), Ons => "ONS".into(),
+        Ton => "TON".into(), Tof => "TOF".into(), Rto => "RTO".into(),
+        Ctu => "CTU".into(), Ctd => "CTD".into(), Res => "RES".into(),
+        Equ => "EQU".into(), Neq => "NEQ".into(), Les => "LES".into(), Leq => "LEQ".into(), Grt => "GRT".into(), Geq => "GEQ".into(),
+        Add => "ADD".into(), Sub => "SUB".into(), Mul => "MUL".into(), Div => "DIV".into(), Mod => "MOD".into(), Neg => "NEG".into(),
+        Mov => "MOV".into(), Cop => "COP".into(),
+        Jmp => "JMP".into(), Lbl => "LBL".into(), Jsr => "JSR".into(), Ret => "RET".into(), Sbr => "SBR".into(),
+        Unknown { mnemonic } => mnemonic.clone(),
     }
 }
 
@@ -679,7 +681,7 @@ mod tests {
             .parent().unwrap()
             .join("samples");
         std::fs::create_dir_all(&samples_dir).ok();
-        let path = samples_dir.join("ConveyorLine1.plcproj");
+        let path = samples_dir.join("ConveyorLine1.aip");
         std::fs::write(&path, &json).expect("Failed to write sample file");
 
         // Verify it round-trips
