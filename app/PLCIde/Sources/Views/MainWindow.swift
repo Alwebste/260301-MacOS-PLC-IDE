@@ -3,10 +3,10 @@ import SwiftUI
 /// Main application window layout.
 ///
 /// ┌──────────┬─────────────────────────┬──────────┐
-/// │ Sidebar  │  Rung Display / Tags    │Inspector │
-/// │          │  (content area)         │          │
-/// │ Project  │                         │ Tag Props│
-/// │ Navigator│                         │ Summary  │
+/// │ Sidebar  │  Ladder Canvas / Tags   │Inspector │
+/// │          │  (content area)         │  or      │
+/// │ Project  │                         │ Palette  │
+/// │ Navigator│                         │          │
 /// ├──────────┴─────────────────────────┴──────────┤
 /// │              Output / Errors Panel             │
 /// └────────────────────────────────────────────────┘
@@ -14,6 +14,9 @@ struct MainWindow: View {
     @EnvironmentObject var projectManager: ProjectManager
 
     @State private var showInspector: Bool = true
+    @State private var showPalette: Bool = false
+    @State private var showSimulator: Bool = false
+    @State private var selectedRungIndex: Int? = nil
 
     var body: some View {
         if projectManager.hasProject {
@@ -66,12 +69,20 @@ struct MainWindow: View {
                 SidebarView()
                     .frame(minWidth: 200, idealWidth: 250, maxWidth: 400)
 
-                // Center: Content area (rungs or tags depending on selection)
-                contentView
-                    .frame(minWidth: 400)
+                // Center: Content area
+                if showSimulator {
+                    SimulatorView()
+                        .frame(minWidth: 500)
+                } else {
+                    contentView
+                        .frame(minWidth: 400)
+                }
 
-                // Right inspector: Properties
-                if showInspector {
+                // Right panel: Inspector or Instruction Palette
+                if showPalette {
+                    InstructionPaletteView()
+                        .frame(minWidth: 200, idealWidth: 240, maxWidth: 300)
+                } else if showInspector {
                     InspectorView()
                         .frame(minWidth: 220, idealWidth: 280, maxWidth: 400)
                 }
@@ -90,6 +101,24 @@ struct MainWindow: View {
                         .foregroundColor(.secondary)
                 }
 
+                Divider()
+
+                // View mode toggle
+                Button {
+                    showSimulator.toggle()
+                } label: {
+                    Image(systemName: showSimulator ? "play.circle.fill" : "play.circle")
+                }
+                .help(showSimulator ? "Exit Simulator" : "Open Simulator")
+
+                Button {
+                    showPalette.toggle()
+                    if showPalette { showInspector = false }
+                } label: {
+                    Image(systemName: showPalette ? "square.grid.2x2.fill" : "square.grid.2x2")
+                }
+                .help("Toggle Instruction Palette")
+
                 Button {
                     projectManager.runValidation()
                 } label: {
@@ -99,6 +128,7 @@ struct MainWindow: View {
 
                 Button {
                     showInspector.toggle()
+                    if showInspector { showPalette = false }
                 } label: {
                     Image(systemName: "sidebar.right")
                 }
@@ -113,14 +143,50 @@ struct MainWindow: View {
         case .controllerTags, .programTags:
             TagTableView()
         case .routine:
-            RungListView()
+            ladderView
         default:
-            // Default: show rungs if a routine is selected, otherwise project overview
             if !projectManager.selectedRoutineRungs.isEmpty {
-                RungListView()
+                ladderView
             } else {
                 projectOverview
             }
+        }
+    }
+
+    /// The main ladder view — uses Core Graphics canvas for graphical rendering,
+    /// with a text-based fallback toggle
+    private var ladderView: some View {
+        VStack(spacing: 0) {
+            // Header bar
+            HStack {
+                if case .routine(let progName, let routName) = projectManager.selection {
+                    Image(systemName: "list.bullet.rectangle")
+                        .foregroundColor(.orange)
+                    Text("\(progName) / \(routName)")
+                        .font(.headline)
+                }
+                Spacer()
+                Text("\(projectManager.selectedRoutineRungs.count) rungs")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(nsColor: .windowBackgroundColor))
+
+            Divider()
+
+            // Core Graphics canvas
+            LadderCanvasView(
+                rungs: projectManager.selectedRoutineRungs,
+                energizedRungs: [],
+                onRungClicked: { index in
+                    selectedRungIndex = index
+                },
+                onInstructionClicked: { rungIndex, instructionId in
+                    selectedRungIndex = rungIndex
+                }
+            )
         }
     }
 

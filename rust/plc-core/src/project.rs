@@ -229,7 +229,196 @@ fn format_operand(op: &crate::ast::Operand) -> String {
     }
 }
 
-use crate::ast::Rung;
+use crate::ast::{Rung, RungElement, Routine};
+
+// ─── Phase 2: Mutation functions for editor ─────────────────────────────────
+
+/// Insert a new empty rung at the given index in a routine.
+/// Returns the updated project.
+#[uniffi::export]
+pub fn insert_rung(
+    mut project: PlcProject,
+    program_name: String,
+    routine_name: String,
+    at_index: u32,
+    comment: String,
+) -> PlcProject {
+    if let Some(routine) = find_routine_mut(&mut project, &program_name, &routine_name) {
+        let idx = (at_index as usize).min(routine.rungs.len());
+        let rung = Rung::new(idx as u32, RungElement::Series { elements: vec![] });
+        let rung = if comment.is_empty() { rung } else { rung.with_comment(&comment) };
+        routine.rungs.insert(idx, rung);
+        renumber_rungs(routine);
+    }
+    project
+}
+
+/// Delete a rung by index. Returns the updated project.
+#[uniffi::export]
+pub fn delete_rung(
+    mut project: PlcProject,
+    program_name: String,
+    routine_name: String,
+    rung_index: u32,
+) -> PlcProject {
+    if let Some(routine) = find_routine_mut(&mut project, &program_name, &routine_name) {
+        let idx = rung_index as usize;
+        if idx < routine.rungs.len() {
+            routine.rungs.remove(idx);
+            renumber_rungs(routine);
+        }
+    }
+    project
+}
+
+/// Move a rung from one position to another. Returns the updated project.
+#[uniffi::export]
+pub fn move_rung(
+    mut project: PlcProject,
+    program_name: String,
+    routine_name: String,
+    from_index: u32,
+    to_index: u32,
+) -> PlcProject {
+    if let Some(routine) = find_routine_mut(&mut project, &program_name, &routine_name) {
+        let from = from_index as usize;
+        let to = to_index as usize;
+        if from < routine.rungs.len() && to < routine.rungs.len() && from != to {
+            let rung = routine.rungs.remove(from);
+            let insert_at = to.min(routine.rungs.len());
+            routine.rungs.insert(insert_at, rung);
+            renumber_rungs(routine);
+        }
+    }
+    project
+}
+
+/// Update a rung's comment. Returns the updated project.
+#[uniffi::export]
+pub fn update_rung_comment(
+    mut project: PlcProject,
+    program_name: String,
+    routine_name: String,
+    rung_index: u32,
+    comment: String,
+) -> PlcProject {
+    if let Some(routine) = find_routine_mut(&mut project, &program_name, &routine_name) {
+        let idx = rung_index as usize;
+        if idx < routine.rungs.len() {
+            routine.rungs[idx].comment = comment;
+        }
+    }
+    project
+}
+
+/// Replace the entire element tree for a rung. Used after drag-drop or structural edits.
+#[uniffi::export]
+pub fn update_rung_element(
+    mut project: PlcProject,
+    program_name: String,
+    routine_name: String,
+    rung_index: u32,
+    new_element: RungElement,
+) -> PlcProject {
+    if let Some(routine) = find_routine_mut(&mut project, &program_name, &routine_name) {
+        let idx = rung_index as usize;
+        if idx < routine.rungs.len() {
+            routine.rungs[idx].element = new_element;
+        }
+    }
+    project
+}
+
+/// Add a new tag to the project. Returns the updated project.
+#[uniffi::export]
+pub fn add_tag(
+    mut project: PlcProject,
+    name: String,
+    data_type: crate::tags::DataType,
+    scope: crate::tags::TagScope,
+    description: String,
+) -> PlcProject {
+    let tag = crate::tags::Tag {
+        id: uuid::Uuid::new_v4().to_string(),
+        name,
+        data_type,
+        scope,
+        description,
+        initial_value: String::new(),
+        alias_for: None,
+        external_access: crate::tags::ExternalAccess::ReadWrite,
+    };
+    project.tag_database.add_tag(tag);
+    project
+}
+
+/// Delete a tag by name. Returns the updated project.
+#[uniffi::export]
+pub fn delete_tag(mut project: PlcProject, tag_name: String) -> PlcProject {
+    project.tag_database.tags.retain(|t| t.name != tag_name);
+    project
+}
+
+/// Add a new routine to a program. Returns the updated project.
+#[uniffi::export]
+pub fn add_routine(
+    mut project: PlcProject,
+    program_name: String,
+    routine_name: String,
+) -> PlcProject {
+    for task in &mut project.tasks {
+        for program in &mut task.programs {
+            if program.name == program_name {
+                program.routines.push(Routine::new(&routine_name));
+                return project;
+            }
+        }
+    }
+    project
+}
+
+/// Duplicate a rung (insert copy below). Returns the updated project.
+#[uniffi::export]
+pub fn duplicate_rung(
+    mut project: PlcProject,
+    program_name: String,
+    routine_name: String,
+    rung_index: u32,
+) -> PlcProject {
+    if let Some(routine) = find_routine_mut(&mut project, &program_name, &routine_name) {
+        let idx = rung_index as usize;
+        if idx < routine.rungs.len() {
+            let mut new_rung = routine.rungs[idx].clone();
+            new_rung.id = uuid::Uuid::new_v4().to_string();
+            routine.rungs.insert(idx + 1, new_rung);
+            renumber_rungs(routine);
+        }
+    }
+    project
+}
+
+// ─── Internal helpers ───────────────────────────────────────────────────────
+
+fn find_routine_mut<'a>(
+    project: &'a mut PlcProject,
+    program_name: &str,
+    routine_name: &str,
+) -> Option<&'a mut Routine> {
+    for task in &mut project.tasks {
+        for program in &mut task.programs {
+            if program.name == program_name {
+                return program.routines.iter_mut().find(|r| r.name == routine_name);
+            }
+        }
+    }
+    None
+}
+
+fn renumber_rungs(routine: &mut Routine) {
+    for (i, rung) in routine.rungs.iter_mut().enumerate() {
+        rung.number = i as u32;
+    }
+}
 
 // ─── Phase 1: Task/Program query functions ──────────────────────────────────
 

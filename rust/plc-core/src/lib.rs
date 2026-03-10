@@ -5,6 +5,7 @@
 
 pub mod ast;
 pub mod project;
+pub mod simulator;
 pub mod tags;
 pub mod validation;
 
