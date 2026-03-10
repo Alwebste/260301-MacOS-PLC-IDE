@@ -237,6 +237,34 @@ but in a structured XML tree. **Critically, the rung expression syntax inside
 
 ## 4. Hard Problems & Known Issues
 
+### P0: Two Rung Text Syntaxes (CRITICAL)
+The AB ecosystem has **two different text representations** for ladder logic:
+
+**Neutral Text** (used in L5X `<Rung><Text>` elements + modern Studio 5000 L5K exports):
+```
+[XIC(Start_PB),XIC(Motor_Run)] OTL(Motor_Run) ;
+XIC(Enable) TON(MyTimer,5000,0) ;
+```
+- Brackets `[ ]` for parallel branches, commas for OR paths
+- Parentheses around operands: `XIC(tag)`
+- Semicolons at end of rungs
+
+**Legacy ASCII Text** (used in L5X `<Data Format="L5K">` blocks, older RSLogix versions):
+```
+BST XIC Start_PB NXB XIC Motor_Run BND OTL Motor_Run
+XIC Enable TON MyTimer ? ?
+```
+- Stack-based branch mnemonics: `BST` (branch start), `NXB` (next branch), `BND` (branch end)
+- No parentheses: `XIC tag` not `XIC(tag)`
+- No semicolons
+
+**Our parser handles Neutral Text**, which covers:
+- All L5X `<Rung><Text>` elements (our primary import path)
+- Modern Studio 5000 L5K exports (v20+)
+
+**Phase 3 TODO:** Add a BST/NXB/BND parser for legacy format if customers need it.
+This is a risk-managed deferral — L5X import is the primary path.
+
 ### P1: Rung Expression Ambiguity
 The L5K rung expression grammar is mostly clean, but edge cases exist:
 - **Nested array indices**: `Tag[OtherTag[i]]` — bracket nesting in operands
@@ -264,7 +292,22 @@ When a project contains unsupported constructs:
 3. **AOIs (Add-On Instructions)**: Treated as unknown instructions. Call site preserved; definition skipped.
 4. **Motion/Safety**: Skipped entirely with warning.
 
-### P5: Comments and Whitespace Round-Trip
+### P5: UDT BOOL Members Use Hidden Backing SINTs
+In L5X, BOOL members inside UDTs are stored as `DataType="BIT"` with a hidden
+backing `SINT` member. The naming convention:
+- Hidden member: `ZZZZZZZZZZ<UDTName><N>` (prefix ensures last-sort)
+- BOOL member: `Target="ZZZZZZZZZZMotorData0"` `BitNumber="3"`
+
+```xml
+<Member Name="ZZZZZZZZZZMotorData0" DataType="SINT" Hidden="true"/>
+<Member Name="Running" DataType="BIT" Target="ZZZZZZZZZZMotorData0" BitNumber="0"/>
+<Member Name="Faulted" DataType="BIT" Target="ZZZZZZZZZZMotorData0" BitNumber="1"/>
+```
+
+**Mitigation:** When parsing UDTs in Phase 3, skip `Hidden="true"` members and
+map BIT members to BOOL. Store the bit-packing info for export fidelity.
+
+### P6: Comments and Whitespace Round-Trip
 L5K files have specific whitespace patterns and comment styles that may not survive a parse→modify→export cycle perfectly. For v1, we accept imperfect whitespace round-tripping.
 
 ### P6: Large File Performance
