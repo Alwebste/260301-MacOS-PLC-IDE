@@ -3,21 +3,16 @@ import SwiftUI
 /// Main application window layout.
 ///
 /// ┌──────────┬─────────────────────────┬──────────┐
-/// │ Sidebar  │     Ladder Canvas       │Inspector │
-/// │          │  (AppKit/Core Graphics) │          │
+/// │ Sidebar  │  Rung Display / Tags    │Inspector │
+/// │          │  (content area)         │          │
 /// │ Project  │                         │ Tag Props│
-/// │ Navigator│                         │ Instr    │
-/// │          │                         │ Details  │
-/// │          │                         │          │
+/// │ Navigator│                         │ Summary  │
 /// ├──────────┴─────────────────────────┴──────────┤
 /// │              Output / Errors Panel             │
 /// └────────────────────────────────────────────────┘
 struct MainWindow: View {
     @EnvironmentObject var projectManager: ProjectManager
 
-    @State private var sidebarWidth: CGFloat = 250
-    @State private var inspectorWidth: CGFloat = 280
-    @State private var outputHeight: CGFloat = 150
     @State private var showInspector: Bool = true
 
     var body: some View {
@@ -55,11 +50,6 @@ struct MainWindow: View {
                     projectManager.openProject()
                 }
                 .controlSize(.large)
-
-                Button("Import L5K/L5X...") {
-                    projectManager.importL5K()
-                }
-                .controlSize(.large)
             }
             .padding(.top, 8)
         }
@@ -74,25 +64,39 @@ struct MainWindow: View {
             HSplitView {
                 // Left sidebar: Project Navigator
                 SidebarView()
-                    .frame(minWidth: 200, idealWidth: sidebarWidth, maxWidth: 400)
+                    .frame(minWidth: 200, idealWidth: 250, maxWidth: 400)
 
-                // Center: Ladder Canvas (will be AppKit NSView in Phase 2)
-                LadderCanvasPlaceholder()
+                // Center: Content area (rungs or tags depending on selection)
+                contentView
                     .frame(minWidth: 400)
 
                 // Right inspector: Properties
                 if showInspector {
                     InspectorView()
-                        .frame(minWidth: 220, idealWidth: inspectorWidth, maxWidth: 400)
+                        .frame(minWidth: 220, idealWidth: 280, maxWidth: 400)
                 }
             }
 
             // Bottom: Output panel
             OutputPanelView()
-                .frame(minHeight: 100, idealHeight: outputHeight, maxHeight: 300)
+                .frame(minHeight: 100, idealHeight: 150, maxHeight: 300)
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                // Project summary badge
+                if let summary = projectManager.summary {
+                    Text("\(summary.rungCount) rungs | \(summary.tagCount) tags")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Button {
+                    projectManager.runValidation()
+                } label: {
+                    Image(systemName: "checkmark.shield")
+                }
+                .help("Run Validation")
+
                 Button {
                     showInspector.toggle()
                 } label: {
@@ -102,25 +106,59 @@ struct MainWindow: View {
             }
         }
     }
-}
 
-/// Placeholder for the ladder canvas — will be replaced with AppKit NSViewRepresentable.
-struct LadderCanvasPlaceholder: View {
-    var body: some View {
-        ZStack {
-            Color(nsColor: .controlBackgroundColor)
-
-            VStack(spacing: 16) {
-                Image(systemName: "rectangle.split.3x3")
-                    .font(.system(size: 48))
-                    .foregroundColor(.secondary)
-                Text("Ladder Editor Canvas")
-                    .font(.title2)
-                    .foregroundColor(.secondary)
-                Text("Phase 2: AppKit + Core Graphics rendering")
-                    .font(.caption)
-                    .foregroundColor(.tertiaryLabel)
+    @ViewBuilder
+    private var contentView: some View {
+        switch projectManager.selection {
+        case .controllerTags, .programTags:
+            TagTableView()
+        case .routine:
+            RungListView()
+        default:
+            // Default: show rungs if a routine is selected, otherwise project overview
+            if !projectManager.selectedRoutineRungs.isEmpty {
+                RungListView()
+            } else {
+                projectOverview
             }
         }
+    }
+
+    private var projectOverview: some View {
+        VStack(spacing: 16) {
+            if let summary = projectManager.summary {
+                GroupBox("Project Overview") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        overviewRow("Name", summary.name)
+                        overviewRow("Controller", "\(summary.controllerFamily) — \(summary.catalogNumber)")
+                        overviewRow("Tasks", "\(summary.taskCount)")
+                        overviewRow("Programs", "\(summary.programCount)")
+                        overviewRow("Routines", "\(summary.routineCount)")
+                        overviewRow("Rungs", "\(summary.rungCount)")
+                        overviewRow("Tags", "\(summary.tagCount)")
+                    }
+                    .padding(8)
+                }
+                .frame(maxWidth: 400)
+
+                Text("Select a routine in the sidebar to view its ladder logic.")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .controlBackgroundColor))
+    }
+
+    private func overviewRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .fontWeight(.medium)
+                .frame(width: 100, alignment: .trailing)
+            Text(value)
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+        .font(.system(.body, design: .monospaced))
     }
 }

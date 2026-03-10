@@ -1,0 +1,554 @@
+{
+  "format_version": 1,
+  "id": "5233e9bf-55d2-45ae-96cd-f2227bd13f5e",
+  "name": "ConveyorLine1",
+  "description": "Conveyor Line 1 — Main production line control",
+  "controller": {
+    "name": "ConveyorLine1",
+    "family": "CompactLogix",
+    "catalog_number": "1769-L33ER",
+    "firmware_version": "34.011",
+    "description": ""
+  },
+  "tasks": [
+    {
+      "id": "1deb0005-d2db-4716-a7ff-7926b17185a8",
+      "name": "MainTask",
+      "description": "",
+      "task_type": "Continuous",
+      "priority": 10,
+      "programs": [
+        {
+          "id": "e20ff521-2025-46a6-9538-6dc690214304",
+          "name": "MainProgram",
+          "description": "",
+          "main_routine_name": "MainRoutine",
+          "fault_routine_name": "",
+          "routines": [
+            {
+              "id": "6b8d91c6-35b7-4ade-a0cf-3fd3e59a4924",
+              "name": "MainRoutine",
+              "description": "",
+              "rungs": [
+                {
+                  "id": "4972a2e2-6351-4ccc-9b14-b00686d4bca4",
+                  "number": 0,
+                  "element": {
+                    "Series": {
+                      "elements": [
+                        {
+                          "Parallel": {
+                            "branches": [
+                              {
+                                "Instruction": {
+                                  "instruction": {
+                                    "id": "204da61a-3624-475e-8af5-5ab1d2cdd85e",
+                                    "instruction_type": "Xic",
+                                    "operands": [
+                                      {
+                                        "TagRef": {
+                                          "name": "Start_PB"
+                                        }
+                                      }
+                                    ],
+                                    "comment": ""
+                                  }
+                                }
+                              },
+                              {
+                                "Instruction": {
+                                  "instruction": {
+                                    "id": "7aa5da8c-849b-4be2-8608-59ceb14d9831",
+                                    "instruction_type": "Xic",
+                                    "operands": [
+                                      {
+                                        "TagRef": {
+                                          "name": "Motor_Run"
+                                        }
+                                      }
+                                    ],
+                                    "comment": ""
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "Instruction": {
+                            "instruction": {
+                              "id": "8332b841-37b1-452e-85d4-41526c544163",
+                              "instruction_type": "Xio",
+                              "operands": [
+                                {
+                                  "TagRef": {
+                                    "name": "E_Stop"
+                                  }
+                                }
+                              ],
+                              "comment": ""
+                            }
+                          }
+                        },
+                        {
+                          "Instruction": {
+                            "instruction": {
+                              "id": "1dd2f640-8cac-4104-ba2a-9cc1c2a097a9",
+                              "instruction_type": "Otl",
+                              "operands": [
+                                {
+                                  "TagRef": {
+                                    "name": "Motor_Run"
+                                  }
+                                }
+                              ],
+                              "comment": ""
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "comment": "Motor seal-in circuit with E-Stop interlock",
+                  "editable": true
+                },
+                {
+                  "id": "892b200e-3e40-4f3d-b4ff-14993e58b96b",
+                  "number": 1,
+                  "element": {
+                    "Series": {
+                      "elements": [
+                        {
+                          "Instruction": {
+                            "instruction": {
+                              "id": "c63aac98-771d-467f-95fd-06e7efa06cac",
+                              "instruction_type": "Xio",
+                              "operands": [
+                                {
+                                  "TagRef": {
+                                    "name": "Stop_PB"
+                                  }
+                                }
+                              ],
+                              "comment": ""
+                            }
+                          }
+                        },
+                        {
+                          "Instruction": {
+                            "instruction": {
+                              "id": "69c8e306-46ae-45ce-9d4e-9700d898aedd",
+                              "instruction_type": "Otu",
+                              "operands": [
+                                {
+                                  "TagRef": {
+                                    "name": "Motor_Run"
+                                  }
+                                }
+                              ],
+                              "comment": ""
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "comment": "Motor stop circuit",
+                  "editable": true
+                },
+                {
+                  "id": "60047a52-1b58-4c5f-ac87-faa91b7e73bb",
+                  "number": 2,
+                  "element": {
+                    "Series": {
+                      "elements": [
+                        {
+                          "Instruction": {
+                            "instruction": {
+                              "id": "3607ef0a-eb88-46cd-bc94-30ad5f32044d",
+                              "instruction_type": "Xic",
+                              "operands": [
+                                {
+                                  "TagRef": {
+                                    "name": "Motor_Run"
+                                  }
+                                }
+                              ],
+                              "comment": ""
+                            }
+                          }
+                        },
+                        {
+                          "Instruction": {
+                            "instruction": {
+                              "id": "bec921b1-0ec7-47cf-bb67-a5bd050e3976",
+                              "instruction_type": "Ton",
+                              "operands": [
+                                {
+                                  "TagRef": {
+                                    "name": "Run_Delay"
+                                  }
+                                },
+                                {
+                                  "IntLiteral": {
+                                    "value": 5000
+                                  }
+                                },
+                                {
+                                  "IntLiteral": {
+                                    "value": 0
+                                  }
+                                }
+                              ],
+                              "comment": ""
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "comment": "Motor run delay timer (5 seconds)",
+                  "editable": true
+                },
+                {
+                  "id": "b7039676-300d-497a-b2b0-092ec7ee57a7",
+                  "number": 3,
+                  "element": {
+                    "Series": {
+                      "elements": [
+                        {
+                          "Instruction": {
+                            "instruction": {
+                              "id": "c804ed3f-318f-4b5b-9b7b-19eb206783ff",
+                              "instruction_type": "Xic",
+                              "operands": [
+                                {
+                                  "TagRef": {
+                                    "name": "Run_Delay.DN"
+                                  }
+                                }
+                              ],
+                              "comment": ""
+                            }
+                          }
+                        },
+                        {
+                          "Instruction": {
+                            "instruction": {
+                              "id": "431b60eb-8840-4871-8116-7d6d5be8d81d",
+                              "instruction_type": "Mov",
+                              "operands": [
+                                {
+                                  "TagRef": {
+                                    "name": "Speed_Setpoint"
+                                  }
+                                },
+                                {
+                                  "TagRef": {
+                                    "name": "Line_Speed"
+                                  }
+                                }
+                              ],
+                              "comment": ""
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "comment": "After delay, apply speed setpoint",
+                  "editable": true
+                },
+                {
+                  "id": "f12f355e-8cce-44e6-b41d-9f2a64ef51b2",
+                  "number": 4,
+                  "element": {
+                    "Series": {
+                      "elements": [
+                        {
+                          "Instruction": {
+                            "instruction": {
+                              "id": "a8c61dc1-7504-4154-9049-40c6acbc152f",
+                              "instruction_type": "Xic",
+                              "operands": [
+                                {
+                                  "TagRef": {
+                                    "name": "Sensor_2"
+                                  }
+                                }
+                              ],
+                              "comment": ""
+                            }
+                          }
+                        },
+                        {
+                          "Instruction": {
+                            "instruction": {
+                              "id": "ecdd77f5-9d40-4c1b-9e1f-ad5e5af88e04",
+                              "instruction_type": "Ctu",
+                              "operands": [
+                                {
+                                  "TagRef": {
+                                    "name": "Part_Count"
+                                  }
+                                },
+                                {
+                                  "IntLiteral": {
+                                    "value": 99999
+                                  }
+                                },
+                                {
+                                  "IntLiteral": {
+                                    "value": 0
+                                  }
+                                }
+                              ],
+                              "comment": ""
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "comment": "Count parts at exit sensor",
+                  "editable": true
+                },
+                {
+                  "id": "c98d735a-9046-4e48-b865-8ad7de0b617b",
+                  "number": 5,
+                  "element": {
+                    "Series": {
+                      "elements": [
+                        {
+                          "Instruction": {
+                            "instruction": {
+                              "id": "af310700-a57e-4102-a10c-5d5ba8b99c10",
+                              "instruction_type": "Xic",
+                              "operands": [
+                                {
+                                  "TagRef": {
+                                    "name": "Motor_Run"
+                                  }
+                                }
+                              ],
+                              "comment": ""
+                            }
+                          }
+                        },
+                        {
+                          "Parallel": {
+                            "branches": [
+                              {
+                                "Instruction": {
+                                  "instruction": {
+                                    "id": "4d5adb07-6f88-4adb-bfd1-6d9efe1617ad",
+                                    "instruction_type": "Xio",
+                                    "operands": [
+                                      {
+                                        "TagRef": {
+                                          "name": "Sensor_1"
+                                        }
+                                      }
+                                    ],
+                                    "comment": ""
+                                  }
+                                }
+                              },
+                              {
+                                "Instruction": {
+                                  "instruction": {
+                                    "id": "22877df9-1e1f-4283-88c6-e6c31d36fb78",
+                                    "instruction_type": "Xio",
+                                    "operands": [
+                                      {
+                                        "TagRef": {
+                                          "name": "Sensor_2"
+                                        }
+                                      }
+                                    ],
+                                    "comment": ""
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "Instruction": {
+                            "instruction": {
+                              "id": "8589c1bd-0f5d-4630-af05-c170fc7b95ef",
+                              "instruction_type": "Ctu",
+                              "operands": [
+                                {
+                                  "TagRef": {
+                                    "name": "Fault_Count"
+                                  }
+                                },
+                                {
+                                  "IntLiteral": {
+                                    "value": 100
+                                  }
+                                },
+                                {
+                                  "IntLiteral": {
+                                    "value": 0
+                                  }
+                                }
+                              ],
+                              "comment": ""
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "comment": "Fault detection: motor running but no sensor activity",
+                  "editable": true
+                }
+              ]
+            },
+            {
+              "id": "db1132cb-a54f-4af7-8a5f-548cfd96b495",
+              "name": "FaultHandler",
+              "description": "",
+              "rungs": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "tag_database": {
+    "tags": [
+      {
+        "id": "cd494e17-e357-4258-8482-d92495c33a59",
+        "name": "Start_PB",
+        "data_type": "Bool",
+        "scope": "Controller",
+        "description": "Start pushbutton",
+        "initial_value": "0",
+        "alias_for": null,
+        "external_access": "ReadWrite"
+      },
+      {
+        "id": "46d989c7-72db-4409-9c19-847738894e6b",
+        "name": "Stop_PB",
+        "data_type": "Bool",
+        "scope": "Controller",
+        "description": "Stop pushbutton (NC)",
+        "initial_value": "0",
+        "alias_for": null,
+        "external_access": "ReadWrite"
+      },
+      {
+        "id": "fdd87a37-6498-4598-a269-45f4ea8748ee",
+        "name": "Motor_Run",
+        "data_type": "Bool",
+        "scope": "Controller",
+        "description": "Motor running status",
+        "initial_value": "0",
+        "alias_for": null,
+        "external_access": "ReadWrite"
+      },
+      {
+        "id": "2a6a903a-17bf-45ef-8258-05f6654ee08a",
+        "name": "E_Stop",
+        "data_type": "Bool",
+        "scope": "Controller",
+        "description": "Emergency stop (NC)",
+        "initial_value": "0",
+        "alias_for": null,
+        "external_access": "ReadWrite"
+      },
+      {
+        "id": "7c9950e5-516c-417b-a406-74e690066cdb",
+        "name": "Line_Speed",
+        "data_type": "Dint",
+        "scope": "Controller",
+        "description": "Conveyor line speed (RPM)",
+        "initial_value": "0",
+        "alias_for": null,
+        "external_access": "ReadWrite"
+      },
+      {
+        "id": "84c4bfd1-cb5d-4ee4-999d-9b81d8fa02b7",
+        "name": "Speed_Setpoint",
+        "data_type": "Dint",
+        "scope": "Controller",
+        "description": "Speed setpoint from HMI",
+        "initial_value": "0",
+        "alias_for": null,
+        "external_access": "ReadWrite"
+      },
+      {
+        "id": "6e501e74-2a65-4e2e-88cf-1cb768167349",
+        "name": "Run_Delay",
+        "data_type": "Timer",
+        "scope": "Controller",
+        "description": "Motor start delay timer",
+        "initial_value": "",
+        "alias_for": null,
+        "external_access": "ReadWrite"
+      },
+      {
+        "id": "b6a15f47-89be-4224-a8c3-7107c989a3ad",
+        "name": "Fault_Count",
+        "data_type": "Counter",
+        "scope": "Controller",
+        "description": "Accumulated fault count",
+        "initial_value": "",
+        "alias_for": null,
+        "external_access": "ReadWrite"
+      },
+      {
+        "id": "34204faa-899a-4872-bfa8-42fb118202d2",
+        "name": "Sensor_1",
+        "data_type": "Bool",
+        "scope": "Controller",
+        "description": "Proximity sensor - entry",
+        "initial_value": "0",
+        "alias_for": null,
+        "external_access": "ReadWrite"
+      },
+      {
+        "id": "e68ddb5a-003a-4a5a-9444-b7c1c665b4f1",
+        "name": "Sensor_2",
+        "data_type": "Bool",
+        "scope": "Controller",
+        "description": "Proximity sensor - exit",
+        "initial_value": "0",
+        "alias_for": null,
+        "external_access": "ReadWrite"
+      },
+      {
+        "id": "4cf398d7-ebd5-4a0e-becb-f44985671a61",
+        "name": "Cycle_Timer",
+        "data_type": "Timer",
+        "scope": {
+          "Program": {
+            "program_name": "MainProgram"
+          }
+        },
+        "description": "Production cycle timer",
+        "initial_value": "",
+        "alias_for": null,
+        "external_access": "ReadWrite"
+      },
+      {
+        "id": "ee020456-61e6-4f38-bece-6ff0b756e99d",
+        "name": "Part_Count",
+        "data_type": "Counter",
+        "scope": {
+          "Program": {
+            "program_name": "MainProgram"
+          }
+        },
+        "description": "Parts produced counter",
+        "initial_value": "",
+        "alias_for": null,
+        "external_access": "ReadWrite"
+      }
+    ]
+  },
+  "imported_from": null
+}

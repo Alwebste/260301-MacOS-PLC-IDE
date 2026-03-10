@@ -33,6 +33,12 @@ struct FileCommands: Commands {
             }
             .keyboardShortcut("o")
 
+            Button("Save Project") {
+                projectManager.saveProject()
+            }
+            .keyboardShortcut("s")
+            .disabled(!projectManager.hasProject)
+
             Divider()
 
             Button("Import L5K...") {
