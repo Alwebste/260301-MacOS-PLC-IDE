@@ -354,6 +354,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "uuid",
  "winnow 0.6.26",
 ]
 
