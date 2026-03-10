@@ -242,6 +242,9 @@ fn identifier<'a>(input: &mut &'a str) -> PResult<&'a str> {
 }
 
 /// Convert an L5K mnemonic string to our InstructionType enum.
+///
+/// Handles both classic (v32–v35) and IEC 61131-3 (v36+) mnemonic names.
+/// v36 renames: EQU→EQ, NEQ→NE, LES→LT, LEQ→LE, GRT→GT, GEQ→GE, MOV→MOVE
 fn parse_mnemonic(mnemonic: &str) -> InstructionType {
     match mnemonic.to_uppercase().as_str() {
         "XIC" => InstructionType::Xic,
@@ -256,20 +259,24 @@ fn parse_mnemonic(mnemonic: &str) -> InstructionType {
         "CTU" => InstructionType::Ctu,
         "CTD" => InstructionType::Ctd,
         "RES" => InstructionType::Res,
-        "EQU" => InstructionType::Equ,
-        "NEQ" => InstructionType::Neq,
-        "LES" => InstructionType::Les,
-        "LEQ" => InstructionType::Leq,
-        "GRT" => InstructionType::Grt,
-        "GEQ" => InstructionType::Geq,
+        // Compare: classic + v36 IEC names
+        "EQU" | "EQ" => InstructionType::Equ,
+        "NEQ" | "NE" => InstructionType::Neq,
+        "LES" | "LT" => InstructionType::Les,
+        "LEQ" | "LE" => InstructionType::Leq,
+        "GRT" | "GT" => InstructionType::Grt,
+        "GEQ" | "GE" => InstructionType::Geq,
+        // Math
         "ADD" => InstructionType::Add,
         "SUB" => InstructionType::Sub,
         "MUL" => InstructionType::Mul,
         "DIV" => InstructionType::Div,
         "MOD" => InstructionType::Mod,
         "NEG" => InstructionType::Neg,
-        "MOV" => InstructionType::Mov,
+        // Move: classic + v36 IEC name
+        "MOV" | "MOVE" => InstructionType::Mov,
         "COP" => InstructionType::Cop,
+        // Program control
         "JMP" => InstructionType::Jmp,
         "LBL" => InstructionType::Lbl,
         "JSR" => InstructionType::Jsr,
@@ -704,5 +711,52 @@ mod tests {
         ).unwrap();
         assert_eq!(tag.name, "MotorData");
         assert!(matches!(&tag.data_type, DataType::Udt { name } if name == "Motor_UDT"));
+    }
+
+    // ── v36 IEC 61131-3 mnemonic tests ──
+
+    #[test]
+    fn parse_v36_compare_mnemonics() {
+        // v36 renames: EQU→EQ, NEQ→NE, LES→LT, LEQ→LE, GRT→GT, GEQ→GE
+        let result = parse_rung_expression("GT(Speed,100) MOVE(Speed,Output)").unwrap();
+        match result {
+            RungElement::Series { elements } => {
+                match &elements[0] {
+                    RungElement::Instruction { instruction } => {
+                        assert_eq!(instruction.instruction_type, InstructionType::Grt);
+                    }
+                    _ => panic!("Expected GT instruction"),
+                }
+                match &elements[1] {
+                    RungElement::Instruction { instruction } => {
+                        assert_eq!(instruction.instruction_type, InstructionType::Mov);
+                    }
+                    _ => panic!("Expected MOVE instruction"),
+                }
+            }
+            _ => panic!("Expected series"),
+        }
+    }
+
+    #[test]
+    fn parse_v36_all_compare_aliases() {
+        for (mnemonic, expected) in [
+            ("EQ", InstructionType::Equ),
+            ("NE", InstructionType::Neq),
+            ("LT", InstructionType::Les),
+            ("LE", InstructionType::Leq),
+            ("GT", InstructionType::Grt),
+            ("GE", InstructionType::Geq),
+        ] {
+            let input = format!("{}(A,B)", mnemonic);
+            let result = parse_rung_expression(&input).unwrap();
+            match result {
+                RungElement::Instruction { instruction } => {
+                    assert_eq!(instruction.instruction_type, expected,
+                        "Mnemonic {} should map to {:?}", mnemonic, expected);
+                }
+                _ => panic!("Expected instruction for {}", mnemonic),
+            }
+        }
     }
 }
