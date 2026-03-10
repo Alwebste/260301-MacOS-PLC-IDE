@@ -7,5 +7,5 @@ edition.workspace = true
 plc-core = { path = "../plc-core" }
 thiserror = { workspace = true }
 # EtherNet/IP - will add dependencies in Phase 4
-tokio = { version = "1", features = ["net", "rt-multi-thread", "macros", "time"] }
+tokio = { version = "1", features = ["net", "rt-multi-thread", "macros", "time", "io-util", "sync"] }
 bytes = "1"

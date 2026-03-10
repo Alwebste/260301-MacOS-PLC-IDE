@@ -12,10 +12,12 @@ import SwiftUI
 /// └────────────────────────────────────────────────┘
 struct MainWindow: View {
     @EnvironmentObject var projectManager: ProjectManager
+    @EnvironmentObject var connectionManager: ConnectionManager
 
     @State private var showInspector: Bool = true
     @State private var showPalette: Bool = false
     @State private var showSimulator: Bool = false
+    @State private var showOnline: Bool = false
     @State private var selectedRungIndex: Int? = nil
 
     var body: some View {
@@ -89,7 +91,15 @@ struct MainWindow: View {
                     .frame(minWidth: 200, idealWidth: 250, maxWidth: 400)
 
                 // Center: Content area
-                if showSimulator {
+                if showOnline {
+                    HSplitView {
+                        contentView
+                            .frame(minWidth: 300)
+                        LiveTagWatchView()
+                            .frame(minWidth: 250, idealWidth: 320, maxWidth: 500)
+                    }
+                    .frame(minWidth: 500)
+                } else if showSimulator {
                     SimulatorView()
                         .frame(minWidth: 500)
                 } else {
@@ -97,8 +107,11 @@ struct MainWindow: View {
                         .frame(minWidth: 400)
                 }
 
-                // Right panel: Inspector or Instruction Palette
-                if showPalette {
+                // Right panel: Inspector, Palette, or Connection
+                if showOnline && showInspector {
+                    ConnectionPanelView()
+                        .frame(minWidth: 220, idealWidth: 280, maxWidth: 400)
+                } else if showPalette {
                     InstructionPaletteView()
                         .frame(minWidth: 200, idealWidth: 240, maxWidth: 300)
                 } else if showInspector {
@@ -113,6 +126,18 @@ struct MainWindow: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                // Connection status
+                if showOnline {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(connectionManager.connectionState.isConnected ? Color.green : Color.gray)
+                            .frame(width: 8, height: 8)
+                        Text(connectionManager.connectionState.isConnected ? "Online" : "Offline")
+                            .font(.caption)
+                            .foregroundColor(connectionManager.connectionState.isConnected ? .green : .secondary)
+                    }
+                }
+
                 // Project summary badge
                 if let summary = projectManager.summary {
                     Text("\(summary.rungCount) rungs | \(summary.tagCount) tags")
@@ -122,9 +147,19 @@ struct MainWindow: View {
 
                 Divider()
 
-                // View mode toggle
+                // Online mode toggle
+                Button {
+                    showOnline.toggle()
+                    if showOnline { showSimulator = false }
+                } label: {
+                    Image(systemName: showOnline ? "antenna.radiowaves.left.and.right.circle.fill" : "antenna.radiowaves.left.and.right")
+                }
+                .help(showOnline ? "Go Offline" : "Go Online (Connect to PLC)")
+
+                // Simulator toggle
                 Button {
                     showSimulator.toggle()
+                    if showSimulator { showOnline = false }
                 } label: {
                     Image(systemName: showSimulator ? "play.circle.fill" : "play.circle")
                 }
@@ -197,7 +232,7 @@ struct MainWindow: View {
             // Core Graphics canvas
             LadderCanvasView(
                 rungs: projectManager.selectedRoutineRungs,
-                energizedRungs: [],
+                energizedRungs: liveEnergizedRungs,
                 onRungClicked: { index in
                     selectedRungIndex = index
                 },
@@ -242,6 +277,53 @@ struct MainWindow: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .controlBackgroundColor))
+    }
+
+    /// Compute energized rungs from live tag data when online.
+    private var liveEnergizedRungs: Set<UInt32> {
+        guard showOnline, connectionManager.connectionState.isConnected, connectionManager.isPolling else {
+            return []
+        }
+        // Build a lookup of live BOOL tag values
+        let liveValues = Dictionary(
+            connectionManager.liveTagValues.map { ($0.name, $0.value) },
+            uniquingKeysWith: { _, last in last }
+        )
+        // Evaluate each rung's output coils
+        var energized: Set<UInt32> = []
+        for rung in projectManager.selectedRoutineRungs {
+            if evaluateRungLive(rung.element, values: liveValues) {
+                energized.insert(rung.number)
+            }
+        }
+        return energized
+    }
+
+    /// Simple live rung evaluation based on tag values.
+    private func evaluateRungLive(_ element: RungElement, values: [String: String]) -> Bool {
+        switch element {
+        case .instruction(let inst):
+            switch inst.instructionType {
+            case .xic:
+                let tag = inst.operands.first?.displayString ?? ""
+                return values[tag] == "1" || values[tag] == "TRUE"
+            case .xio:
+                let tag = inst.operands.first?.displayString ?? ""
+                return values[tag] != "1" && values[tag] != "TRUE"
+            case .ote, .otl, .otu:
+                return true // output instructions pass through
+            default:
+                return true
+            }
+        case .series(let elements):
+            var power = true
+            for el in elements {
+                power = power && evaluateRungLive(el, values: values)
+            }
+            return power
+        case .parallel(let branches):
+            return branches.contains { evaluateRungLive($0, values: values) }
+        }
     }
 
     private var project: PlcProject {

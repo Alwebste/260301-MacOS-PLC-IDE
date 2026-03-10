@@ -3,12 +3,19 @@ import SwiftUI
 @main
 struct PLCIdeApp: App {
     @StateObject private var projectManager = ProjectManager()
+    @StateObject private var connectionManager = ConnectionManager()
 
     var body: some Scene {
         WindowGroup {
             MainWindow()
                 .environmentObject(projectManager)
+                .environmentObject(connectionManager)
                 .frame(minWidth: 1200, minHeight: 800)
+                .onAppear {
+                    connectionManager.setOutputHandler { msg in
+                        projectManager.outputMessages.append(msg)
+                    }
+                }
         }
         .windowStyle(.titleBar)
         .commands {
