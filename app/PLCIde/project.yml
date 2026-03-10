@@ -1,0 +1,41 @@
+# XcodeGen project specification
+# Generate .xcodeproj with: xcodegen generate
+# Install XcodeGen: brew install xcodegen
+name: PLCIde
+options:
+  bundleIdPrefix: com.plcide
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_IDENTITY: "-"
+
+targets:
+  PLCIde:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.plcide.app
+        PRODUCT_NAME: "PLC IDE"
+        INFOPLIST_GENERATION_MODE: GeneratedFile
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: 1
+        # Link the Rust static library
+        OTHER_LDFLAGS: ["-L$(PROJECT_DIR)/../rust/target/release", "-lplc_core"]
+        HEADER_SEARCH_PATHS: ["$(PROJECT_DIR)/../rust/target/uniffi"]
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+    preBuildScripts:
+      - name: "Build Rust Core"
+        script: |
+          cd "${PROJECT_DIR}/../rust"
+          ./build-macos.sh
+        basedOnDependencyAnalysis: false

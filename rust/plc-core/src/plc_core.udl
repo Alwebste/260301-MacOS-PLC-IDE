@@ -1,0 +1,7 @@
+// UniFFI interface definition for plc-core.
+// Types marked with #[uniffi::Record], #[uniffi::Enum], and #[uniffi::export]
+// in Rust source are automatically included via proc-macro mode.
+// This UDL file serves as the scaffolding entry point.
+
+namespace plc_core {
+};

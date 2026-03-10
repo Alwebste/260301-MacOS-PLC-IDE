@@ -1,0 +1,14 @@
+[package]
+name = "plc-parser"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+plc-core = { path = "../plc-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+# L5X (XML) parsing
+quick-xml = { version = "0.37", features = ["serialize"] }
+# L5K parser - using winnow (modern nom successor)
+winnow = "0.6"
