@@ -81,6 +81,33 @@ struct AIPanelView: View {
 
             Divider()
 
+            // API key setup prompt
+            if !aiAssistant.apiKeyConfigured {
+                HStack(spacing: 8) {
+                    Image(systemName: "key")
+                        .foregroundColor(.orange)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("API key not configured")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                        Text("Using offline pattern library. Configure your Anthropic API key for full AI capabilities.")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button("Settings") {
+                        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    }
+                    .controlSize(.small)
+                }
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.orange.opacity(0.1))
+                )
+                .padding(.horizontal, 8)
+            }
+
             // Chat history
             ScrollViewReader { proxy in
                 ScrollView {

@@ -79,9 +79,15 @@ class AIAssistant: ObservableObject {
     private var apiKey: String = ""
     private var outputHandler: ((String) -> Void)?
 
+    /// Read-only access for connection testing in Settings.
+    var apiKeyForTesting: String { apiKey }
+
     init() {
-        // Check for API key in environment or keychain
-        if let key = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !key.isEmpty {
+        // Check Keychain first, then fall back to environment variable
+        if let key = KeychainHelper.load(), !key.isEmpty {
+            apiKey = key
+            apiKeyConfigured = true
+        } else if let key = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !key.isEmpty {
             apiKey = key
             apiKeyConfigured = true
         }

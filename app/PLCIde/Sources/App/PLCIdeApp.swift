@@ -26,6 +26,11 @@ struct PLCIdeApp: App {
         .commands {
             FileCommands(projectManager: projectManager)
         }
+
+        Settings {
+            SettingsView()
+                .environmentObject(aiAssistant)
+        }
     }
 }
 
