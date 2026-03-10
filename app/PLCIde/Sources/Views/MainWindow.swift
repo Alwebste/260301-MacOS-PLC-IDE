@@ -13,11 +13,13 @@ import SwiftUI
 struct MainWindow: View {
     @EnvironmentObject var projectManager: ProjectManager
     @EnvironmentObject var connectionManager: ConnectionManager
+    @EnvironmentObject var aiAssistant: AIAssistant
 
     @State private var showInspector: Bool = true
     @State private var showPalette: Bool = false
     @State private var showSimulator: Bool = false
     @State private var showOnline: Bool = false
+    @State private var showAI: Bool = false
     @State private var selectedRungIndex: Int? = nil
 
     var body: some View {
@@ -107,8 +109,11 @@ struct MainWindow: View {
                         .frame(minWidth: 400)
                 }
 
-                // Right panel: Inspector, Palette, or Connection
-                if showOnline && showInspector {
+                // Right panel: AI, Inspector, Palette, or Connection
+                if showAI {
+                    AIPanelView()
+                        .frame(minWidth: 280, idealWidth: 340, maxWidth: 500)
+                } else if showOnline && showInspector {
                     ConnectionPanelView()
                         .frame(minWidth: 220, idealWidth: 280, maxWidth: 400)
                 } else if showPalette {
@@ -173,6 +178,15 @@ struct MainWindow: View {
                 }
                 .help("Toggle Instruction Palette")
 
+                // AI Assistant toggle
+                Button {
+                    showAI.toggle()
+                    if showAI { showPalette = false; showInspector = false }
+                } label: {
+                    Image(systemName: showAI ? "brain.fill" : "brain")
+                }
+                .help(showAI ? "Hide AI Assistant" : "Show AI Assistant")
+
                 Button {
                     projectManager.runValidation()
                 } label: {
@@ -182,7 +196,7 @@ struct MainWindow: View {
 
                 Button {
                     showInspector.toggle()
-                    if showInspector { showPalette = false }
+                    if showInspector { showPalette = false; showAI = false }
                 } label: {
                     Image(systemName: "sidebar.right")
                 }

@@ -4,15 +4,20 @@ import SwiftUI
 struct PLCIdeApp: App {
     @StateObject private var projectManager = ProjectManager()
     @StateObject private var connectionManager = ConnectionManager()
+    @StateObject private var aiAssistant = AIAssistant()
 
     var body: some Scene {
         WindowGroup {
             MainWindow()
                 .environmentObject(projectManager)
                 .environmentObject(connectionManager)
+                .environmentObject(aiAssistant)
                 .frame(minWidth: 1200, minHeight: 800)
                 .onAppear {
                     connectionManager.setOutputHandler { msg in
+                        projectManager.outputMessages.append(msg)
+                    }
+                    aiAssistant.setOutputHandler { msg in
                         projectManager.outputMessages.append(msg)
                     }
                 }
